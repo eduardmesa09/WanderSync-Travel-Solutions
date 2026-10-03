@@ -71,6 +71,24 @@ Si un paso falla, la orden pasa a `COMPENSATING` y se deshacen en orden inverso 
 - **Recuperación tras caídas.** Al arrancar, `orders` compensa las órdenes que quedaron `PENDING` o `COMPENSATING` hace más de dos minutos.
 - **Fallo simulado.** `simulateFailure: FLIGHT | HOTEL | CAR | PAYMENT` hace que ese paso falle.
 
+### El SAGA en Prefect
+
+Cada reserva es una corrida del flow `saga-reserva` en Prefect (http://localhost:4200 → *Runs*), con nombre `orden-<id>`. Cada paso y cada compensación es una tarea:
+
+```
+Camino feliz        reservar-vuelo → reservar-hotel → reservar-auto → cobrar-pago          estado: Confirmada
+Falla el auto       reservar-vuelo → reservar-hotel → reservar-auto ✗
+                    → compensar-auto → compensar-hotel → compensar-vuelo                   estado: Compensada
+Falla el pago       ... → cobrar-pago ✗
+                    → compensar-pago → compensar-auto → compensar-hotel → compensar-vuelo  estado: Compensada
+```
+
+- **La tarea que falla queda en rojo** con su error, y detrás aparecen las compensaciones en orden inverso.
+- **Las compensaciones reintentan** hasta 3 veces (esperas de 1 y 2 s); los reintentos se ven en la tarea.
+- **El flow corre dentro del servicio de Órdenes**, sin pasar por la cola de Prefect, así que el checkout responde en pocos segundos.
+- **Las reservas no dependen de Prefect.** Antes de cada SAGA, Órdenes consulta la salud de Prefect (2 s de espera máxima); si no responde, ejecuta el mismo SAGA sin registrarlo allí. La bitácora `orders.saga_steps` se escribe siempre.
+- **`saga-recuperacion`** es el flow que compensa las órdenes interrumpidas por un reinicio.
+
 ## Seguridad
 
 | Requisito | Implementación | Dónde |

@@ -46,7 +46,8 @@ services:
     <<: *service
     build: ./services/cars
 
-  # Orquestador del SAGA: llama a vuelos, hoteles y autos.
+  # Orquestador del SAGA: llama a vuelos, hoteles y autos. Cada reserva se
+  # registra en Prefect como una corrida del flow "saga-reserva".
   orders:
     <<: *service
     build: ./services/orders
@@ -54,9 +55,12 @@ services:
       FLIGHTS_URL: http://flights:8000
       HOTELS_URL: http://hotels:8000
       CARS_URL: http://cars:8000
+      PREFECT_API_URL: http://prefect-server:4200/api
     depends_on:
       migrate:
         condition: service_completed_successfully
+      prefect-server:
+        condition: service_healthy
       flights:
         condition: service_healthy
       hotels:

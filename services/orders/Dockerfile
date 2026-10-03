@@ -1,6 +1,9 @@
 FROM python:3.12-slim
 
-ENV PYTHONUNBUFFERED=1
+# Prefect guarda su configuración local en PREFECT_HOME; el usuario nobody no
+# tiene directorio personal, así que se le da uno escribible.
+ENV PYTHONUNBUFFERED=1 \
+    PREFECT_HOME=/tmp/prefect
 WORKDIR /srv
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt

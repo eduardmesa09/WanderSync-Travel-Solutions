@@ -16,6 +16,7 @@ El enunciado completo está en [Parcial 2 - Sistema de Reservas Turísticas.md](
 | Base de datos | Supabase Cloud (Postgres) |
 | Sesiones y rate limiting | Redis |
 | Ingesta | Dask + Prefect, scraping de Kayak con Playwright |
+| Observabilidad | Prefect: flows de ingesta y del SAGA (pasos y compensaciones) |
 | Despliegue | Docker Compose |
 
 ## Arquitectura
@@ -77,7 +78,7 @@ docs/
 2. `docker compose up --build`. La primera vez tarda: descarga Chromium y la imagen de Prefect.
    - Frontend: http://localhost:3000
    - API GraphQL (con GraphiQL): http://localhost:8000/graphql
-   - Prefect: http://localhost:4200
+   - Prefect: http://localhost:4200 (flow `ingesta-kayak` y una corrida de `saga-reserva` por cada reserva)
    - Dashboard de Dask: http://localhost:8787
 3. Para comprobar que todo funciona: `python scripts/smoke_test.py` (requiere `pip install httpx`).
 

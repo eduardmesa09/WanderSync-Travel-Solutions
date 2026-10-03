@@ -24,6 +24,7 @@ async def lifespan(app: FastAPI):
     recovery = asyncio.create_task(saga.recover_interrupted())
     yield
     recovery.cancel()
+    await saga.http.aclose()
     await pool.close()
 
 
@@ -81,7 +82,7 @@ async def create_order(body: OrderIn, response: Response):
         response.status_code = 200
         return await _load(existing_id, body.user_id)
 
-    await saga.run(order)
+    await saga.run(order["id"])
     return await _load(order["id"], body.user_id)
 
 

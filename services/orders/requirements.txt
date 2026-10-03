@@ -1,5 +1,6 @@
 fastapi==0.142.2
 httpx==0.28.1
+prefect==3.8.7
 psycopg[binary]==3.3.6
 psycopg-pool==3.3.3
 uvicorn==0.54.0
