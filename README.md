@@ -4,7 +4,7 @@ Plataforma de empaquetamiento turístico dinámico: busca y reserva vuelos, hote
 
 El enunciado completo está en [Parcial 2 - Sistema de Reservas Turísticas.md](Parcial%202%20-%20Sistema%20de%20Reservas%20Turísticas.md).
 
-> **Estado:** backend completo: gateway GraphQL, microservicios y SAGA ([services/](services/README.md)), ingesta de Kayak con Prefect + Dask ([ingestion/](ingestion/README.md)) y base de datos en Supabase ([db/](db/README.md)). Falta el frontend y el documento técnico.
+> **Estado:** backend completo: gateway GraphQL, microservicios y SAGA ([services/](services/README.md)), ingesta de Kayak con Prefect + Dask ([ingestion/](ingestion/README.md)) y base de datos en Supabase ([db/](db/README.md)). Frontend completo ([frontend/](frontend/README.md)). Falta el documento técnico.
 
 ## Stack
 
@@ -75,6 +75,7 @@ docs/
 
 1. Copiar `.env.example` a `.env` y completar las credenciales de Supabase.
 2. `docker compose up --build`. La primera vez tarda: descarga Chromium y la imagen de Prefect.
+   - Frontend: http://localhost:3000
    - API GraphQL (con GraphiQL): http://localhost:8000/graphql
    - Prefect: http://localhost:4200
    - Dashboard de Dask: http://localhost:8787

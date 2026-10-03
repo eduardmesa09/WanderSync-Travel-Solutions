@@ -1,0 +1,20 @@
+# npm audit — frontend (React + Vite)
+# Fecha: 2026-10-03T16:22Z · npm 11.17.0 · node v24.19.0
+# Comando: npm audit (todas las dependencias, incluidas las de desarrollo)
+
+found 0 vulnerabilities
+
+# Comando: npm audit --omit=dev (solo lo que llega al navegador)
+found 0 vulnerabilities
+
+# Dependencias directas (versiones fijadas en package.json)
+wandersync-frontend@1.0.0 (frontend/)
++-- @types/react-dom@19.3.0
++-- @types/react@19.3.0
++-- @vitejs/plugin-react@6.1.1
++-- react-dom@19.3.0
++-- react-router-dom@7.18.4
++-- react@19.3.0
++-- typescript@7.0.2
+`-- vite@8.3.2
+

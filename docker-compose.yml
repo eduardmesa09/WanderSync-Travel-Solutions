@@ -85,6 +85,17 @@ services:
       orders:
         condition: service_healthy
 
+  # Frontend React servido por nginx: http://localhost:3000
+  # nginx reenvía /graphql al gateway, así el navegador habla con un solo origen.
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      gateway:
+        condition: service_healthy
+
   prefect-server:
     image: prefecthq/prefect:3.8.7-python3.12
     command: prefect server start --host 0.0.0.0
