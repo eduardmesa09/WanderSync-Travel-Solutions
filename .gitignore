@@ -12,6 +12,9 @@ venv/
 .mypy_cache/
 .ruff_cache/
 
+# Snapshots generados en cada corrida del scraper (los de respaldo están en ingestion/tests/fixtures)
+ingestion/snapshots/*.html
+
 # Node
 node_modules/
 dist/
