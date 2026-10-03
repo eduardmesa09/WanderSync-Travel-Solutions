@@ -100,13 +100,35 @@ services:
       gateway:
         condition: service_healthy
 
+  # Base de datos del servidor de Prefect (historial de corridas y horarios).
+  # Es interna: sin puerto publicado, y no guarda datos del negocio. Se usa
+  # Postgres en lugar del SQLite por defecto porque escriben a la vez el SAGA,
+  # los workers de Dask y el propio servidor.
+  prefect-db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: prefect
+      POSTGRES_PASSWORD: prefect
+      POSTGRES_DB: prefect
+    volumes:
+      - prefect-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "prefect"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   prefect-server:
-    image: prefecthq/prefect:3.8.7-python3.12
+    build: ./prefect
     command: prefect server start --host 0.0.0.0
+    environment:
+      PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://prefect:prefect@prefect-db:5432/prefect
     ports:
       - "4200:4200"  # interfaz de Prefect: http://localhost:4200
-    volumes:
-      - prefect-data:/root/.prefect
+    depends_on:
+      prefect-db:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4200/api/health')"]
       interval: 5s
@@ -149,5 +171,5 @@ services:
         condition: service_healthy
 
 volumes:
-  prefect-data:
+  prefect-db-data:
   kayak-snapshots:
