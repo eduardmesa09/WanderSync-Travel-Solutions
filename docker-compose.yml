@@ -1,10 +1,138 @@
 name: wandersync
 
+# Configuración común de los contenedores que usan la imagen de ingesta.
+x-ingestion: &ingestion
+  build: ./ingestion
+  env_file: .env
+  environment:
+    PREFECT_API_URL: http://prefect-server:4200/api
+    DASK_SCHEDULER_ADDRESS: tcp://dask-scheduler:8786
+
+# Configuración común de los microservicios. No publican puertos: solo son
+# alcanzables desde la red interna de Docker, a través del gateway.
+x-service: &service
+  env_file: .env
+  restart: unless-stopped
+  depends_on:
+    migrate:
+      condition: service_completed_successfully
+
 services:
   # Aplica las migraciones de db/migrations en Supabase y termina.
-  # Los demás servicios que usen la base deben depender de este con
-  # condition: service_completed_successfully.
   migrate:
     build: ./db
     env_file: .env
     restart: "no"
+
+  # Sesiones y contadores de rate limiting del gateway. Sin puerto publicado.
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  flights:
+    <<: *service
+    build: ./services/flights
+
+  hotels:
+    <<: *service
+    build: ./services/hotels
+
+  cars:
+    <<: *service
+    build: ./services/cars
+
+  # Orquestador del SAGA: llama a vuelos, hoteles y autos.
+  orders:
+    <<: *service
+    build: ./services/orders
+    environment:
+      FLIGHTS_URL: http://flights:8000
+      HOTELS_URL: http://hotels:8000
+      CARS_URL: http://cars:8000
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      flights:
+        condition: service_healthy
+      hotels:
+        condition: service_healthy
+      cars:
+        condition: service_healthy
+
+  # Único punto de entrada del frontend: http://localhost:8000/graphql
+  gateway:
+    <<: *service
+    build: ./services/gateway
+    ports:
+      - "8000:8000"
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      FLIGHTS_URL: http://flights:8000
+      HOTELS_URL: http://hotels:8000
+      CARS_URL: http://cars:8000
+      ORDERS_URL: http://orders:8000
+      FRONTEND_ORIGINS: http://localhost:5173
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      orders:
+        condition: service_healthy
+
+  prefect-server:
+    image: prefecthq/prefect:3.8.7-python3.12
+    command: prefect server start --host 0.0.0.0
+    ports:
+      - "4200:4200"  # interfaz de Prefect: http://localhost:4200
+    volumes:
+      - prefect-data:/root/.prefect
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4200/api/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  dask-scheduler:
+    <<: *ingestion
+    command: dask scheduler
+    ports:
+      - "8787:8787"  # dashboard de Dask: http://localhost:8787
+
+  # Un hilo por worker: cada worker abre un solo navegador a la vez, así dos
+  # workers nunca lanzan más de dos peticiones simultáneas a Kayak.
+  dask-worker:
+    <<: *ingestion
+    command: dask worker tcp://dask-scheduler:8786 --nthreads 1 --memory-limit 2GiB
+    deploy:
+      replicas: 2
+    shm_size: 1gb  # Chromium necesita más memoria compartida que los 64 MB por defecto
+    volumes:
+      - kayak-snapshots:/app/snapshots
+    depends_on:
+      dask-scheduler:
+        condition: service_started
+      prefect-server:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  # Registra el deployment "kayak-cada-6h" en Prefect y lo ejecuta según el
+  # horario. También se puede lanzar a mano desde la interfaz de Prefect.
+  ingestion:
+    <<: *ingestion
+    command: python -m flows.kayak
+    depends_on:
+      dask-worker:
+        condition: service_started
+      prefect-server:
+        condition: service_healthy
+
+volumes:
+  prefect-data:
+  kayak-snapshots:

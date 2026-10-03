@@ -1,0 +1,5 @@
+# gateway: services/gateway/requirements.txt
+# pip-audit, 2026-10-03
+# Comando: pip-audit -r services/gateway/requirements.txt
+
+No known vulnerabilities found

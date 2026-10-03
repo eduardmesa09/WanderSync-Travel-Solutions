@@ -36,13 +36,14 @@ on conflict on constraint flights_natural_key do update set
 
 UPSERT_HOTELS = """
 insert into hotels.hotels (
-    name, city, checkin, checkout, price_per_night, currency, stars, rating, review_count,
+    name, city, destination, checkin, checkout, price_per_night, currency, stars, rating, review_count,
     distance_miles, free_breakfast, source, scraped_at
 ) values (
-    %(name)s, %(city)s, %(checkin)s, %(checkout)s, %(price_per_night)s, %(currency)s, %(stars)s,
-    %(rating)s, %(review_count)s, %(distance_miles)s, %(free_breakfast)s, %(source)s, now()
+    %(name)s, %(city)s, %(destination)s, %(checkin)s, %(checkout)s, %(price_per_night)s, %(currency)s,
+    %(stars)s, %(rating)s, %(review_count)s, %(distance_miles)s, %(free_breakfast)s, %(source)s, now()
 )
 on conflict on constraint hotels_natural_key do update set
+    destination = coalesce(excluded.destination, hotels.hotels.destination),
     price_per_night = excluded.price_per_night,
     currency = excluded.currency,
     stars = excluded.stars,

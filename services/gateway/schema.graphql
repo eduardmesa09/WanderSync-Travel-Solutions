@@ -1,0 +1,165 @@
+input BookPackageInput {
+  flightId: ID = null
+  hotelId: ID = null
+  carId: ID = null
+  passengers: Int! = 1
+
+  """
+  Identificador único del intento de compra (p. ej. un UUID generado al abrir el checkout). Repetir la mutación con la misma clave devuelve la reserva original.
+  """
+  idempotencyKey: String!
+
+  """
+  Solo para la demo: fuerza el fallo de ese paso para ver las compensaciones.
+  """
+  simulateFailure: SagaStepName = null
+}
+
+type Booking {
+  id: ID!
+  status: BookingStatus!
+  flightId: ID
+  hotelId: ID
+  carId: ID
+  passengers: Int!
+  totalAmount: Float!
+  currency: String!
+  failureReason: String
+  createdAt: String!
+  steps: [SagaStep!]!
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  COMPENSATING
+  COMPENSATED
+  FAILED
+}
+
+type Car {
+  id: ID!
+  category: String!
+  model: String
+  agency: String
+  pickupAirport: String!
+  pickupLocation: String
+  pickupDate: String!
+  dropoffDate: String!
+  passengers: Int
+  bags: Int
+  doors: Int
+  transmission: String
+  airConditioning: Boolean!
+  freeCancellation: Boolean!
+  score: Float
+
+  """Precio total del alquiler"""
+  priceTotal: Float!
+  currency: String!
+}
+
+"""Date (isoformat)"""
+scalar Date
+
+type Flight {
+  id: ID!
+  origin: String!
+  destination: String!
+  departureDate: String!
+  departureTime: String!
+  arrivalTime: String!
+  arrivalDayOffset: Int!
+  airline: String!
+  stops: Int!
+  durationMinutes: Int!
+
+  """Precio por pasajero"""
+  price: Float!
+  currency: String!
+  fareClass: String
+}
+
+type Hotel {
+  id: ID!
+  name: String!
+  destination: String
+  checkin: String!
+  checkout: String!
+  pricePerNight: Float!
+  currency: String!
+  stars: Int
+
+  """Calificación sobre 10"""
+  rating: Float
+  reviewCount: Int
+
+  """Distancia al aeropuerto del destino"""
+  distanceMiles: Float
+  freeBreakfast: Boolean!
+}
+
+type Mutation {
+  """Crea una cuenta e inicia sesión."""
+  register(email: String!, password: String!, fullName: String!): User!
+
+  """Inicia sesión. La sesión viaja en una cookie HttpOnly."""
+  login(email: String!, password: String!): User!
+
+  """Cierra la sesión actual."""
+  logout: Boolean!
+
+  """Checkout: reserva el paquete y lo cobra mediante el SAGA."""
+  bookPackage(input: BookPackageInput!): Booking!
+}
+
+"""Disponibilidad consolidada para armar un paquete."""
+type PackageSearch {
+  origin: String!
+  destination: String!
+  departureDate: String!
+  returnDate: String!
+  flights(limit: Int! = 20): [Flight!]
+  hotels(limit: Int! = 20): [Hotel!]
+  cars(limit: Int! = 20): [Car!]
+}
+
+type Query {
+  """Usuario de la sesión actual, o null si no hay sesión."""
+  me: User
+
+  """Vuelos, hoteles y autos disponibles para un destino y fechas."""
+  searchPackages(destination: String!, departureDate: Date!, nights: Int! = 2, origin: String! = "BOG"): PackageSearch!
+
+  """Reservas del usuario autenticado, de la más reciente a la más antigua."""
+  myBookings(limit: Int! = 20): [Booking!]!
+
+  """Una reserva del usuario autenticado, con la bitácora de su SAGA."""
+  booking(id: ID!): Booking
+}
+
+"""Una transición registrada en la bitácora del SAGA."""
+type SagaStep {
+  step: SagaStepName!
+
+  """EXECUTE o COMPENSATE"""
+  action: String!
+
+  """STARTED, SUCCEEDED o FAILED"""
+  status: String!
+  error: String
+  createdAt: String!
+}
+
+enum SagaStepName {
+  FLIGHT
+  HOTEL
+  CAR
+  PAYMENT
+}
+
+type User {
+  id: ID!
+  email: String!
+  fullName: String!
+}

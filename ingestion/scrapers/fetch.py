@@ -1,9 +1,11 @@
 """Descarga de páginas de Kayak con Playwright.
 
-Cada descarga exitosa se guarda en ingestion/snapshots/ para poder volver a
-parsearla si Kayak bloquea durante la demo.
+Cada descarga exitosa se guarda en ingestion/snapshots/ con el nombre de la
+búsqueda. En modo offline se parsea el último snapshot de esa búsqueda en lugar
+de ir a Kayak: es el respaldo para la demo si Kayak bloquea.
 """
 
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -20,6 +22,10 @@ BLOCK_PATHS = ("/help/bots", "/security/check")
 
 class BlockedError(Exception):
     """Kayak mostró captcha o verificación anti-bot."""
+
+
+class SnapshotNotFoundError(Exception):
+    """Modo offline sin un snapshot guardado para esa búsqueda."""
 
 
 def flights_url(origin: str, dest: str, date: str) -> str:
@@ -41,18 +47,26 @@ def cars_url(airport: str, pickup: str, dropoff: str) -> str:
 
 def fetch(
     url: str,
-    vertical: str,
+    name: str,
     wait_selector: str | None = None,
     settle_ms: int = 8_000,
     timeout_ms: int = 45_000,
+    offline: bool = False,
 ) -> str:
-    """Abre la URL, espera los resultados y devuelve el HTML renderizado.
+    """Devuelve el HTML renderizado de la URL.
+
+    name identifica la búsqueda (p. ej. "flights_BOG-MDE_2026-11-10") y nombra
+    el snapshot. Con offline=True no se va a Kayak: se lee el último snapshot.
 
     Kayak sigue cargando resultados después de mostrar los primeros, por eso se
     espera settle_ms adicionales tras aparecer wait_selector.
 
     Lanza BlockedError si la página es una verificación anti-bot.
     """
+    name = _safe_name(name)
+    if offline:
+        return load_latest_snapshot(name)
+
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         context = browser.new_context(
@@ -78,10 +92,10 @@ def fetch(
             browser.close()
 
     if any(path in final_url for path in BLOCK_PATHS):
-        save_snapshot(html, f"{vertical}-blocked")
+        save_snapshot(html, f"{name}-blocked")
         raise BlockedError(f"Kayak bloqueó la petición: {final_url}")
 
-    save_snapshot(html, vertical)
+    save_snapshot(html, name)
     return html
 
 
@@ -89,5 +103,17 @@ def save_snapshot(html: str, name: str) -> Path:
     SNAPSHOTS_DIR.mkdir(exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     path = SNAPSHOTS_DIR / f"{name}-{stamp}.html"
-    path.write_text(html, encoding="utf-8")
+    path.write_text(html, encoding="utf-8", newline="")
     return path
+
+
+def load_latest_snapshot(name: str) -> str:
+    # El sufijo de fecha empieza por "2"; así se excluyen los "-blocked".
+    candidates = sorted(SNAPSHOTS_DIR.glob(f"{_safe_name(name)}-2*.html"))
+    if not candidates:
+        raise SnapshotNotFoundError(f"No hay snapshot guardado para {name}")
+    return candidates[-1].read_text(encoding="utf-8")
+
+
+def _safe_name(name: str) -> str:
+    return re.sub(r"[^A-Za-z0-9_.-]+", "_", name)

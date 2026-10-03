@@ -49,9 +49,11 @@ class Flight:
         return asdict(self)
 
 
-def scrape_flights(origin: str, dest: str, date: str) -> list[Flight]:
+def scrape_flights(origin: str, dest: str, date: str, offline: bool = False) -> list[Flight]:
     """Descarga y parsea los vuelos de ida para una ruta y fecha (YYYY-MM-DD)."""
-    html = fetch(flights_url(origin, dest, date), "flights", wait_selector=PRICE)
+    html = fetch(
+        flights_url(origin, dest, date), f"flights_{origin}-{dest}_{date}", wait_selector=PRICE, offline=offline
+    )
     return parse_flights(html, date)
 
 

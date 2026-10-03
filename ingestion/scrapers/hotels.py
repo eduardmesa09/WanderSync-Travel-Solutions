@@ -37,19 +37,24 @@ class Hotel:
     review_count: int | None
     distance_miles: float | None  # desde el punto de referencia de la búsqueda
     free_breakfast: bool
+    destination: str | None = None  # código IATA del destino buscado
     source: str = "kayak"
 
     def to_dict(self) -> dict:
         return asdict(self)
 
 
-def scrape_hotels(city: str, checkin: str, checkout: str) -> list[Hotel]:
+def scrape_hotels(
+    city: str, checkin: str, checkout: str, destination: str | None = None, offline: bool = False
+) -> list[Hotel]:
     """Descarga y parsea hoteles. city como "Medellin,Antioquia,Colombia"."""
-    html = fetch(hotels_url(city, checkin, checkout), "hotels", wait_selector=CARD)
-    return parse_hotels(html, city, checkin, checkout)
+    html = fetch(
+        hotels_url(city, checkin, checkout), f"hotels_{city}_{checkin}_{checkout}", wait_selector=CARD, offline=offline
+    )
+    return parse_hotels(html, city, checkin, checkout, destination)
 
 
-def parse_hotels(html: str, city: str, checkin: str, checkout: str) -> list[Hotel]:
+def parse_hotels(html: str, city: str, checkin: str, checkout: str, destination: str | None = None) -> list[Hotel]:
     soup = BeautifulSoup(html, "lxml")
     hotels: dict[str, Hotel] = {}
     for card in soup.select(CARD):
@@ -57,6 +62,7 @@ def parse_hotels(html: str, city: str, checkin: str, checkout: str) -> list[Hote
             continue
         hotel = _parse_card(card, city, checkin, checkout)
         if hotel and (hotel.name not in hotels or hotel.price_per_night < hotels[hotel.name].price_per_night):
+            hotel.destination = destination
             hotels[hotel.name] = hotel
     return list(hotels.values())
 

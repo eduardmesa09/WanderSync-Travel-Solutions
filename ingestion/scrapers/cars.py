@@ -50,9 +50,11 @@ class Car:
         return asdict(self)
 
 
-def scrape_cars(airport: str, pickup: str, dropoff: str) -> list[Car]:
+def scrape_cars(airport: str, pickup: str, dropoff: str, offline: bool = False) -> list[Car]:
     """Descarga y parsea autos para un aeropuerto (código IATA) y fechas."""
-    html = fetch(cars_url(airport, pickup, dropoff), "cars", wait_selector=CARD)
+    html = fetch(
+        cars_url(airport, pickup, dropoff), f"cars_{airport}_{pickup}_{dropoff}", wait_selector=CARD, offline=offline
+    )
     return parse_cars(html, airport, pickup, dropoff)
 
 
