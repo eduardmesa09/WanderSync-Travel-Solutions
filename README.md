@@ -4,7 +4,7 @@ Plataforma de empaquetamiento turístico dinámico: busca y reserva vuelos, hote
 
 El enunciado completo está en [Parcial 2 - Sistema de Reservas Turísticas.md](Parcial%202%20-%20Sistema%20de%20Reservas%20Turísticas.md).
 
-> **Estado:** estructura inicial. Todavía no hay código ni `docker-compose.yml`.
+> **Estado:** listos los scrapers de Kayak ([ingestion/](ingestion/README.md)) y el esquema de base de datos con sus migraciones ([db/](db/README.md)). Faltan los microservicios, el gateway, Prefect + Dask y el frontend.
 
 ## Stack
 
@@ -67,14 +67,14 @@ docs/
 ## Cómo trabajamos
 
 - **El contrato entre ambos es el esquema GraphQL.** El gateway exporta el esquema a `services/gateway/schema.graphql`; el frontend lo usa como única referencia. Cualquier cambio en ese archivo se avisa antes de hacer merge.
-- **Ramas:** `main` siempre debe levantar. Se trabaja en ramas `backend/<tema>` y `frontend/<tema>` y se integra por pull request.
-- **Cada uno toca solo sus carpetas.** Si hace falta un cambio en el área del otro, se pide o se abre un pull request para que lo revise.
+- **Todo se trabaja directo en `main`.** Hagan `git pull` antes de empezar y commits pequeños para evitar conflictos.
+- **Cada uno toca solo sus carpetas.** Si hace falta un cambio en el área del otro, se le pide.
 - **Secretos:** las credenciales van en `.env`, que no se sube. Si se agrega una variable, se agrega también a `.env.example`.
 
 ## Puesta en marcha
 
 1. Copiar `.env.example` a `.env` y completar las credenciales de Supabase.
-2. `docker compose up --build` _(pendiente: aún no existe el archivo)_.
+2. `docker compose up --build`. Por ahora solo aplica las migraciones de la base de datos.
 
 ## Operaciones GraphQL previstas
 

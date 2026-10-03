@@ -1,0 +1,10 @@
+name: wandersync
+
+services:
+  # Aplica las migraciones de db/migrations en Supabase y termina.
+  # Los demás servicios que usen la base deben depender de este con
+  # condition: service_completed_successfully.
+  migrate:
+    build: ./db
+    env_file: .env
+    restart: "no"
