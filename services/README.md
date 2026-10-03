@@ -78,7 +78,7 @@ Si un paso falla, la orden pasa a `COMPENSATING` y se deshacen en orden inverso 
 | Hashing robusto | Argon2id (64 MiB, 3 iteraciones, 4 hilos). La base rechaza hashes que no sean Argon2id. | [security.py](gateway/app/security.py), migración 002 |
 | Session Fixation | Sesiones en Redis. En cada login o registro se invalida el identificador anterior y se emite uno nuevo de 256 bits. El servidor no acepta identificadores que no haya emitido. | [security.py](gateway/app/security.py) |
 | Cookie de sesión | `HttpOnly`, `SameSite=Lax`, expira a las 8 h. `COOKIE_SECURE=true` la restringe a HTTPS. | [security.py](gateway/app/security.py) |
-| Rate limiting | Contadores en Redis. Login: 10/min por IP y 5 cada 5 min por cuenta. Registro: 5/h por IP. Checkout y pago: 10/min por usuario. General: 120/min por IP. | [schema.py](gateway/app/schema.py), [main.py](gateway/app/main.py) |
+| Rate limiting | Contadores en Redis. Login: 10/min por IP y 5 cada 5 min por cuenta. Registro: 10 cada 10 min por IP. Checkout y pago: 10/min por usuario. General: 120/min por IP. | [schema.py](gateway/app/schema.py), [main.py](gateway/app/main.py) |
 | Enumeración de cuentas | El login responde igual y tarda lo mismo exista o no el correo. | [schema.py](gateway/app/schema.py) |
 | Abuso de GraphQL | Profundidad máxima 6, máximo 10 alias, errores internos ocultos al cliente. | [schema.py](gateway/app/schema.py) |
 | Superficie | Solo el gateway publica puerto. CORS limitado a `FRONTEND_ORIGINS`. | [docker-compose.yml](../docker-compose.yml) |

@@ -262,7 +262,7 @@ class Mutation:
     @strawberry.mutation(description="Crea una cuenta e inicia sesión.")
     async def register(self, info: Info, email: str, password: str, full_name: str) -> User:
         request, response = info.context["request"], info.context["response"]
-        await security.enforce("register", security.client_ip(request), limit=5, window=3600)
+        await security.enforce("register", security.client_ip(request), limit=10, window=600)
 
         email, full_name = email.strip().lower(), full_name.strip()
         if not EMAIL_RE.match(email) or len(email) > 254:

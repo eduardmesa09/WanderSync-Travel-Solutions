@@ -2,10 +2,10 @@
 
 Uso: DATABASE_URL=postgresql://... python migrate.py
 
-Cada archivo se aplica una sola vez, dentro de su propia transacción, y queda
-registrado en meta.schema_migrations con su checksum. Si un archivo ya aplicado
-cambia, el script se detiene: las migraciones aplicadas no se editan, se agrega
-una nueva.
+Cada archivo se aplica una sola vez y queda registrado en meta.schema_migrations
+con su checksum. Todas las pendientes van en una sola transacción: si una falla,
+no se aplica ninguna. Si un archivo ya aplicado cambia, el script se detiene:
+las migraciones aplicadas no se editan, se agrega una nueva.
 """
 
 import hashlib
@@ -27,9 +27,11 @@ def main() -> int:
         return 1
 
     files = sorted(MIGRATIONS_DIR.glob("*.sql"))
-    with psycopg.connect(dsn, autocommit=True) as conn:
-        conn.execute("select pg_advisory_lock(%s)", (LOCK_ID,))
-        try:
+    try:
+        # Sin sentencias preparadas y con un candado de transacción (no de sesión):
+        # ambos son requisitos del transaction pooler de Supabase.
+        with psycopg.connect(dsn, prepare_threshold=None) as conn, conn.transaction():
+            conn.execute("select pg_advisory_xact_lock(%s)", (LOCK_ID,))
             _ensure_table(conn)
             applied = dict(conn.execute("select name, checksum from meta.schema_migrations").fetchall())
             for path in files:
@@ -38,21 +40,24 @@ def main() -> int:
                 checksum = hashlib.sha256(sql.replace("\r\n", "\n").encode()).hexdigest()
                 if path.name in applied:
                     if applied[path.name] != checksum:
-                        print(f"ERROR: {path.name} cambió después de aplicarse. Crea una migración nueva.", file=sys.stderr)
-                        return 1
+                        raise ChangedMigrationError(path.name)
                     continue
-                with conn.transaction():
-                    conn.execute(sql)
-                    conn.execute(
-                        "insert into meta.schema_migrations (name, checksum) values (%s, %s)",
-                        (path.name, checksum),
-                    )
+                conn.execute(sql)
+                conn.execute(
+                    "insert into meta.schema_migrations (name, checksum) values (%s, %s)",
+                    (path.name, checksum),
+                )
                 print(f"aplicada  {path.name}")
-        finally:
-            conn.execute("select pg_advisory_unlock(%s)", (LOCK_ID,))
+    except ChangedMigrationError as error:
+        print(f"ERROR: {error} cambió después de aplicarse. Crea una migración nueva.", file=sys.stderr)
+        return 1
 
     print(f"Base de datos al día ({len(files)} migraciones).")
     return 0
+
+
+class ChangedMigrationError(Exception):
+    """Una migración ya aplicada fue modificada."""
 
 
 def _ensure_table(conn: psycopg.Connection) -> None:

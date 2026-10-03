@@ -88,7 +88,8 @@ def connect(dsn: str | None = None) -> psycopg.Connection:
     dsn = dsn or os.environ.get("DATABASE_URL")
     if not dsn:
         raise RuntimeError("Falta la variable DATABASE_URL")
-    return psycopg.connect(dsn)
+    # Sin sentencias preparadas: son incompatibles con el transaction pooler de Supabase.
+    return psycopg.connect(dsn, prepare_threshold=None)
 
 
 def save_flights(conn: psycopg.Connection, flights: list[Flight]) -> int:

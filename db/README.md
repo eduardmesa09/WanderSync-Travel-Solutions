@@ -23,9 +23,23 @@ Los catálogos los llena la ingesta desde Kayak; las reservas y órdenes las cre
 - **Contraseñas solo en Argon2id.** Una restricción rechaza cualquier hash que no empiece por `$argon2id$`.
 - **Esquemas cerrados a la API pública de Supabase.** La migración 001 revoca el acceso de los roles `anon` y `authenticated`; solo los microservicios entran, con la cadena de conexión.
 
+## Conexión: transaction pooler
+
+`DATABASE_URL` debe usar el **Transaction pooler** de Supabase (puerto 6543).
+
+| Opción | Problema |
+|---|---|
+| Conexión directa | Suele ser solo IPv6; Docker no la alcanza. |
+| Session pooler (5432) | Admite 15 clientes en total. Con 5 servicios, 2 workers y reinicios se agota (`EMAXCONNSESSION`), y las sesiones de contenedores ya eliminados tardan en liberarse. |
+| Transaction pooler (6543) | Reparte muchos clientes sobre pocas conexiones reales. Es el que se usa. |
+
+El transaction pooler puede enviar cada transacción por una conexión distinta, y eso impone dos reglas en el código:
+- **Sin sentencias preparadas:** todas las conexiones se abren con `prepare_threshold=None`.
+- **Sin estado de sesión:** el candado de las migraciones es de transacción (`pg_advisory_xact_lock`), no de sesión.
+
 ## Migraciones
 
-Los archivos de `migrations/` se aplican en orden, una sola vez cada uno. **Nunca edites una migración ya aplicada**: el script lo detecta por checksum y se detiene. Para cambiar algo, crea un archivo nuevo con el siguiente número.
+Los archivos de `migrations/` se aplican en orden, una sola vez cada uno, y todas las pendientes en una sola transacción: si una falla, no se aplica ninguna. **Nunca edites una migración ya aplicada**: el script lo detecta por checksum y se detiene. Para cambiar algo, crea un archivo nuevo con el siguiente número.
 
 ```bash
 # Con Docker (lee DATABASE_URL de .env)

@@ -53,7 +53,10 @@ check(
 )
 
 REGISTER = "mutation($e: String!, $p: String!) { register(email: $e, password: $p, fullName: \"Demo\") { id email } }"
-check("registro", gql(client, REGISTER, {"e": email, "p": password})["data"]["register"]["email"] == email)
+registered = gql(client, REGISTER, {"e": email, "p": password})
+if code(registered) == "RATE_LIMITED":
+    sys.exit(f"El registro está limitado por intentos recientes: {registered['errors'][0]['message']}")
+check("registro", registered["data"]["register"]["email"] == email)
 first_session = client.cookies.get("wandersync_session")
 check("el registro entrega cookie de sesión", bool(first_session))
 check("me devuelve el usuario", gql(client, "{ me { email } }")["data"]["me"]["email"] == email)
