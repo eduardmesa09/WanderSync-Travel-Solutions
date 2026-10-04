@@ -60,8 +60,8 @@ docs/
 
 | Área | Carpetas | Responsable |
 |---|---|---|
-| Backend | `services/`, `ingestion/`, `db/`, `docker-compose.yml` | _nombre_ |
-| Frontend | `frontend/` | _nombre_ |
+| Backend | `services/`, `ingestion/`, `db/`, `docker-compose.yml` | Eduard Meza |
+| Frontend | `frontend/` | Juan José Campos |
 
 `docs/` es de ambos.
 
